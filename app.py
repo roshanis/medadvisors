@@ -155,6 +155,7 @@ with left_h:
     _subtitle = CATEGORY_SUBTITLE.get(selected_category, "Leader‑led expert panel tailored to the domain to deliver a clear, actionable plan.")
     st.markdown(f"<div class='hero-title'>{_emoji} Medical Advisors</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='hero-subtitle'>{_subtitle}</div>", unsafe_allow_html=True)
+    st.divider()
 with right_h:
     pass
 

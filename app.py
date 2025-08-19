@@ -567,6 +567,7 @@ if st.button("Verify", key="captcha_verify_btn_main"):
 run_btn = False
 if bool(st.session_state.get("captcha_ok", False)):
     st.markdown("<div class='runbar'>", unsafe_allow_html=True)
+    st.caption("Consensus typically takes 2–5 minutes.")
     run_btn = st.button(
         "Run Advisors",
         type="primary",
@@ -768,7 +769,7 @@ if run_btn:
         agenda_rules = tuple(list(CATEGORY_RULES[selected_category]) + [ACTIONABILITY_RULE, ADVICE_RULE])
         save_dir = BASE_DIR / "advisor_meetings"
         save_dir.mkdir(parents=True, exist_ok=True)
-        with st.spinner("Running advisors... this may take a few minutes"):
+        with st.spinner("Running advisors… this usually takes 2–5 minutes"):
             try:
                 # Auto-number session name and prune to keep the latest 5 web_* sessions
                 auto_save_name = _make_next_web_session_name(save_dir)

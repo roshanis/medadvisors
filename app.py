@@ -128,7 +128,6 @@ st.markdown(
     [data-testid="stHeader"] { display: none; }
     [data-testid="stToolbar"] { display: none !important; }
     .block-container { padding-top: 0.5rem !important; }
-    .card { padding: 1rem 1.2rem; border-radius: 8px; border: 1px solid #e8ebf3; margin-bottom: 1rem; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background:#eef3ff; color:#2952ff; font-size: 12px; margin-right:8px; }
     .hero-title { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.25rem; }
     .hero-subtitle { color: #6b7280; margin-top: 0; }
@@ -148,9 +147,7 @@ st.markdown(
 left_h, right_h = st.columns([3, 1])
 with left_h:
     # Advisor Category at top
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
     selected_category = "Medical"
-    st.markdown("</div>", unsafe_allow_html=True)
     _emoji = CATEGORY_EMOJI.get(selected_category, "🩺")
     _subtitle = CATEGORY_SUBTITLE.get(selected_category, "Leader‑led expert panel tailored to the domain to deliver a clear, actionable plan.")
     st.markdown(f"<div class='hero-title'>{_emoji} Medical Advisors</div>", unsafe_allow_html=True)
@@ -219,7 +216,6 @@ CATEGORY_RULES: Dict[str, list[str]] = {
 
  
 
-st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.subheader("Case / Problem Description")
 agenda = st.text_area(
     "Describe the case",

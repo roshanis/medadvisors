@@ -54,10 +54,10 @@ CATEGORY_PRESETS: Dict[str, Dict] = {
                 "role": "cardiology",
             },
             {
-                "title": "Infectious Diseases",
-                "expertise": "antimicrobials, sepsis, source control",
-                "goal": "recommend diagnostic studies and targeted empiric therapy",
-                "role": "ID",
+                "title": "Insurance Expert",
+                "expertise": "coverage criteria, prior authorization, coding/billing",
+                "goal": "identify coverage constraints, recommend documentation for approvals, and estimate patient cost",
+                "role": "insurance",
             },
             {
                 "title": "Clinical Pharmacist",

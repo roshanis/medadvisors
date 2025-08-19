@@ -796,6 +796,34 @@ if run_btn:
                         model_name=model,
                         num_rounds=int(num_rounds),
                     )
+                    # Save artifacts for fast path so Transcript/Raw JSON tabs work
+                    try:
+                        md_path = save_dir / f"{auto_save_name}.md"
+                        md_content = (
+                            "# Medical Advisors — Transcript (Fast Path)\n\n"
+                            f"## Agenda\n\n{agenda.strip()}\n\n"
+                            + (f"## Clarifications\n\n{clarifications_text}\n\n" if clarifications_text else "")
+                            + (f"## Web highlights\n\n{web_context_text}\n\n" if web_context_text else "")
+                            + "## Consensus Summary\n\n"
+                            + (summary or "(No summary generated)")
+                        )
+                        with open(md_path, "w", encoding="utf-8") as f:
+                            f.write(md_content)
+
+                        json_path = save_dir / f"{auto_save_name}.json"
+                        messages_obj = {
+                            "mode": "fast",
+                            "agenda": agenda,
+                            "clarifications": clarifications_text or "",
+                            "web_context": web_context_text or "",
+                            "team_lead": lead_spec,
+                            "team_members": list(member_specs),
+                            "summary_md": summary,
+                        }
+                        with open(json_path, "w", encoding="utf-8") as f:
+                            json.dump(messages_obj, f, ensure_ascii=False, indent=2)
+                    except Exception:
+                        pass
                 elif cache_outputs:
                     bar.progress(40, text="Starting cached team meeting…")
                     summary = run_meeting_cached(

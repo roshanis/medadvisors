@@ -136,9 +136,9 @@ st.markdown(
     .skel { background:linear-gradient(90deg, #1f2937 25%, #374151 37%, #1f2937 63%); background-size:400% 100%; animation:sh 1.2s ease-in-out infinite; border-radius:8px; }
     @keyframes sh { 0%{background-position:100% 0} 100%{background-position:0 0} }
     /* Solid color dividers */
-    hr { border: 0 !important; height: 2px !important; background-color: #e8ebf3 !important; }
-    [data-testid="stDivider"] hr { border: 0 !important; height: 2px !important; background-color: #e8ebf3 !important; }
-    [role="separator"] { border: 0 !important; height: 2px !important; background-color: #e8ebf3 !important; }
+    hr { border: 0 !important; height: 2px !important; background-color: #e8ebf3 !important; width: 100% !important; margin-left: 0 !important; margin-right: 0 !important; }
+    [data-testid="stDivider"] hr { border: 0 !important; height: 2px !important; background-color: #e8ebf3 !important; width: 100% !important; margin-left: 0 !important; margin-right: 0 !important; }
+    [role="separator"] { border: 0 !important; height: 2px !important; background-color: #e8ebf3 !important; width: 100% !important; margin-left: 0 !important; margin-right: 0 !important; }
     </style>
     """,
     unsafe_allow_html=True,

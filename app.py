@@ -136,6 +136,10 @@ st.markdown(
     .runbar { position:sticky; bottom:0; z-index:50; background:rgba(17,24,39,.85); backdrop-filter:saturate(180%) blur(8px); padding:10px 12px; border-top:1px solid #2b2f36; }
     .skel { background:linear-gradient(90deg, #1f2937 25%, #374151 37%, #1f2937 63%); background-size:400% 100%; animation:sh 1.2s ease-in-out infinite; border-radius:8px; }
     @keyframes sh { 0%{background-position:100% 0} 100%{background-position:0 0} }
+    /* Solid color dividers */
+    hr { border: 0 !important; height: 2px !important; background-color: #e8ebf3 !important; }
+    [data-testid="stDivider"] hr { border: 0 !important; height: 2px !important; background-color: #e8ebf3 !important; }
+    [role="separator"] { border: 0 !important; height: 2px !important; background-color: #e8ebf3 !important; }
     </style>
     """,
     unsafe_allow_html=True,

@@ -16,13 +16,6 @@ except Exception:
 import streamlit.components.v1 as components
 from virtual_lab.agent import Agent
 from virtual_lab.run_meeting import run_meeting
-from advisors.prompts import (
-    PROMPT_GOAL_SUFFIX_LEAD,
-    PROMPT_GOAL_SUFFIX_MEMBER,
-    ACTIONABILITY_RULE,
-    ADVICE_RULE,
-)
-from advisors.services.meeting_fast import run_fast_completions
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -74,406 +67,6 @@ CATEGORY_PRESETS: Dict[str, Dict] = {
             },
         ],
     },
-    "Entrepreneur ideas": {
-        "lead": {
-            "title": "Startup Mentor",
-            "expertise": "idea maze, founder-market fit, early traction",
-            "goal": "drive the team to a crisp problem statement, wedge, and MVP scope",
-            "role": "team lead and final arbiter",
-        },
-        "members": [
-            {
-                "title": "Product Strategy",
-                "expertise": "discovery, prioritization, outcomes over output",
-                "goal": "define MVP, success metrics, and ruthless prioritization",
-                "role": "product strategist",
-            },
-            {
-                "title": "Growth",
-                "expertise": "acquisition loops, retention, network effects",
-                "goal": "propose growth loops and testable hypotheses",
-                "role": "growth lead",
-            },
-            {
-                "title": "Fundraising",
-                "expertise": "round sequencing, pitch, cap table, investor fit",
-                "goal": "shape the narrative, milestones, and target investor list",
-                "role": "fundraising advisor",
-            },
-            {
-                "title": "Ops & Finance",
-                "expertise": "unit economics, cash runway, ops scaling",
-                "goal": "stress-test unit economics and operating model",
-                "role": "CFO/ops",
-            },
-            {
-                "title": "Legal (Startup Counsel)",
-                "expertise": "company setup, IP, contracts, employment",
-                "goal": "highlight legal risks and recommended defaults",
-                "role": "legal counsel",
-            },
-        ],
-    },
-    "NFL fantasy player selection": {
-        "lead": {
-            "title": "Lead Fantasy Analyst",
-            "expertise": "macro narratives, roster construction, game theory",
-            "goal": "synthesize data and scouting to produce start/sit, draft, and waiver decisions",
-            "role": "team lead and final arbiter",
-        },
-        "members": [
-            {
-                "title": "Data & Modeling",
-                "expertise": "air yards, target shares, projections, simulations",
-                "goal": "produce projections and uncertainty bands; flag buy/sell signals",
-                "role": "modeling lead",
-            },
-            {
-                "title": "Injury Analyst",
-                "expertise": "injury timelines, performance impact, re-injury risk",
-                "goal": "quantify availability and performance deltas by injury",
-                "role": "injury specialist",
-            },
-            {
-                "title": "Matchups & Weather",
-                "expertise": "defensive schemes, pace, Vegas lines, weather",
-                "goal": "adjust projections using matchups and environmental factors",
-                "role": "context analyst",
-            },
-            {
-                "title": "DFS & Waivers",
-                "expertise": "ownership, leverage, FAAB bidding, schedule exploitation",
-                "goal": "recommend DFS stacks and weekly waiver priorities",
-                "role": "DFS/waiver strategist",
-            },
-            {
-                "title": "Risk & Portfolio",
-                "expertise": "exposure caps, diversification, contest selection",
-                "goal": "manage risk across lineups and season-long portfolios",
-                "role": "portfolio manager",
-            },
-        ],
-    },
-    "Personal finance and investing": {
-        "lead": {
-            "title": "Portfolio Manager",
-            "expertise": "asset allocation, index investing, rebalancing",
-            "goal": "deliver a low-cost, diversified plan matched to horizon and risk",
-            "role": "team lead and final arbiter",
-        },
-        "members": [
-            {
-                "title": "Tax Planner (CPA)",
-                "expertise": "tax-advantaged accounts, harvesting, entity selection",
-                "goal": "minimize lifetime taxes; coordinate with investment plan",
-                "role": "tax strategy",
-            },
-            {
-                "title": "Retirement Planner",
-                "expertise": "safe withdrawal, annuities, social security timing",
-                "goal": "design sustainable retirement income with guardrails",
-                "role": "retirement",
-            },
-            {
-                "title": "Risk Actuary",
-                "expertise": "insurance, tail risks, liability management",
-                "goal": "size emergency fund and insurance; stress-test plan",
-                "role": "risk management",
-            },
-            {
-                "title": "Real Estate",
-                "expertise": "buy/hold, cash flow, leverage, local markets",
-                "goal": "evaluate real-estate as a complement to the portfolio",
-                "role": "real estate",
-            },
-            {
-                "title": "Behavioral Finance",
-                "expertise": "biases, nudges, commitment devices",
-                "goal": "reduce behavioral errors and improve adherence",
-                "role": "behavioral advisor",
-            },
-        ],
-    },
-    "Legal strategy and contracts": {
-        "lead": {
-            "title": "General Counsel",
-            "expertise": "corporate law, negotiation, dispute resolution",
-            "goal": "balance risk and business goals; define legal strategy",
-            "role": "team lead and final arbiter",
-        },
-        "members": [
-            {
-                "title": "Contracts Negotiator",
-                "expertise": "commercial terms, risk allocation, remedies",
-                "goal": "craft enforceable, business-aligned terms",
-                "role": "contracts",
-            },
-            {
-                "title": "IP/Patent Counsel",
-                "expertise": "patentability, prior art, licensing",
-                "goal": "protect and leverage IP while avoiding pitfalls",
-                "role": "intellectual property",
-            },
-            {
-                "title": "Employment Law",
-                "expertise": "hiring, termination, equity, compliance",
-                "goal": "minimize labor risk and ensure compliant practices",
-                "role": "employment",
-            },
-            {
-                "title": "Privacy & Compliance",
-                "expertise": "GDPR, CCPA, data governance",
-                "goal": "define lawful bases and implement safeguards",
-                "role": "privacy/compliance",
-            },
-            {
-                "title": "Litigation Strategist",
-                "expertise": "venue, motions, settlement strategy",
-                "goal": "optimize litigation posture and alternatives",
-                "role": "litigation",
-            },
-        ],
-    },
-    "Software architecture and DevOps": {
-        "lead": {
-            "title": "Chief Architect",
-            "expertise": "domain modeling, evolutionary architecture, governance",
-            "goal": "align architecture with business goals; reduce complexity and risk",
-            "role": "team lead and final arbiter",
-        },
-        "members": [
-            {
-                "title": "Cloud & Infrastructure",
-                "expertise": "AWS/GCP/Azure, cost, multi-tenancy",
-                "goal": "produce a scalable, cost-aware infra plan",
-                "role": "cloud/infra",
-            },
-            {
-                "title": "Security",
-                "expertise": "threat modeling, AppSec, incident response",
-                "goal": "embed security by design with actionable controls",
-                "role": "security lead",
-            },
-            {
-                "title": "Data & ML Platform",
-                "expertise": "data contracts, feature stores, model ops",
-                "goal": "design reliable data/ML pipelines and SLAs",
-                "role": "data/ML",
-            },
-            {
-                "title": "SRE & Reliability",
-                "expertise": "SLIs/SLOs, capacity, chaos engineering",
-                "goal": "set reliability targets and runbooks",
-                "role": "SRE",
-            },
-            {
-                "title": "QA & Automation",
-                "expertise": "test strategy, CI/CD, quality gates",
-                "goal": "ensure fast feedback and defect prevention",
-                "role": "QA",
-            },
-        ],
-    },
-    "Product design and UX": {
-        "lead": {
-            "title": "Head of Design",
-            "expertise": "human-centered design, usability, systems thinking",
-            "goal": "balance desirability, feasibility, and viability",
-            "role": "team lead and final arbiter",
-        },
-        "members": [
-            {
-                "title": "UX Research",
-                "expertise": "generative/evaluative research, JTBD, synthesis",
-                "goal": "identify user needs and opportunity areas",
-                "role": "research",
-            },
-            {
-                "title": "Interaction Design",
-                "expertise": "flows, IA, patterns, affordances",
-                "goal": "define interaction models and prototypes",
-                "role": "interaction design",
-            },
-            {
-                "title": "Content Strategy",
-                "expertise": "voice/tone, IA, microcopy",
-                "goal": "craft clear, consistent, accessible content",
-                "role": "content",
-            },
-            {
-                "title": "Accessibility",
-                "expertise": "WCAG, inclusive UX, audits",
-                "goal": "ensure compliance and inclusive experiences",
-                "role": "accessibility",
-            },
-            {
-                "title": "Design Systems",
-                "expertise": "tokens, components, governance",
-                "goal": "create scalable, consistent UI system",
-                "role": "design systems",
-            },
-        ],
-    },
-    "Marketing and growth": {
-        "lead": {
-            "title": "Chief Marketing Officer",
-            "expertise": "positioning, brand, growth strategy",
-            "goal": "craft a coherent strategy from brand to performance",
-            "role": "team lead and final arbiter",
-        },
-        "members": [
-            {
-                "title": "Performance & Growth",
-                "expertise": "paid media, CRO, growth loops",
-                "goal": "design scalable acquisition and retention loops",
-                "role": "growth",
-            },
-            {
-                "title": "SEO",
-                "expertise": "technical SEO, content strategy, international",
-                "goal": "build durable organic growth program",
-                "role": "SEO lead",
-            },
-            {
-                "title": "Brand",
-                "expertise": "category design, distinctiveness, memory structures",
-                "goal": "create distinctive brand assets and memory cues",
-                "role": "brand",
-            },
-            {
-                "title": "Lifecycle & CRM",
-                "expertise": "segmentation, messaging, automation",
-                "goal": "increase activation, retention, and LTV",
-                "role": "CRM",
-            },
-            {
-                "title": "Marketing Analytics",
-                "expertise": "attribution, incrementality, MMM",
-                "goal": "measure causality and guide budget allocation",
-                "role": "analytics",
-            },
-        ],
-    },
-    "Academic research and writing": {
-        "lead": {
-            "title": "Principal Investigator",
-            "expertise": "causal inference, research design, ethics",
-            "goal": "ensure methodological rigor and meaningful contribution",
-            "role": "team lead and final arbiter",
-        },
-        "members": [
-            {
-                "title": "Literature Synthesis",
-                "expertise": "systematic reviews, PRISMA, search strategies",
-                "goal": "map prior work and extract evidence consistently",
-                "role": "literature review",
-            },
-            {
-                "title": "Methods & Study Design",
-                "expertise": "bias control, sampling, preregistration",
-                "goal": "design valid, reproducible studies",
-                "role": "methods",
-            },
-            {
-                "title": "Statistics",
-                "expertise": "Bayesian and frequentist inference, power, modeling",
-                "goal": "analyze data and quantify uncertainty",
-                "role": "statistics",
-            },
-            {
-                "title": "Writing & Editing",
-                "expertise": "structure, clarity, argumentation",
-                "goal": "craft clear manuscripts and rebuttals",
-                "role": "editor",
-            },
-            {
-                "title": "Citation Management",
-                "expertise": "Zotero, LaTeX, styles, reproducible builds",
-                "goal": "maintain clean references and templates",
-                "role": "tooling",
-            },
-        ],
-    },
-    "Career coaching and hiring": {
-        "lead": {
-            "title": "Head of Talent",
-            "expertise": "hiring strategy, org design, performance systems",
-            "goal": "optimize candidate-market fit and offer outcomes",
-            "role": "team lead and final arbiter",
-        },
-        "members": [
-            {
-                "title": "Resume & LinkedIn",
-                "expertise": "positioning, achievements, ATS optimization",
-                "goal": "build a compelling, search-friendly profile",
-                "role": "resume/branding",
-            },
-            {
-                "title": "Interview Coach (Tech)",
-                "expertise": "DS&A, system design, behavioral",
-                "goal": "plan study path, drills, and mock interviews",
-                "role": "interview prep",
-            },
-            {
-                "title": "Technical Evaluator",
-                "expertise": "code review, career ladders, hiring rubrics",
-                "goal": "assess technical fit and level accurately",
-                "role": "technical evaluation",
-            },
-            {
-                "title": "Compensation & Offers",
-                "expertise": "levels, equity, negotiation strategy",
-                "goal": "optimize offer structure and negotiation plan",
-                "role": "compensation",
-            },
-            {
-                "title": "Networking & Referrals",
-                "expertise": "direct outreach, value-first networking",
-                "goal": "build an effective warm-intro pipeline",
-                "role": "networking coach",
-            },
-        ],
-    },
-    "Fashion": {
-        "lead": {
-            "title": "Creative Director",
-            "expertise": "brand vision, collection curation, storytelling",
-            "goal": "orchestrate a cohesive, on‑brand collection that balances desirability, feasibility, and margin",
-            "role": "team lead and final arbiter",
-        },
-        "members": [
-            {
-                "title": "Trend & Market Research",
-                "expertise": "trend forecasting, cultural analysis, consumer insights",
-                "goal": "surface relevant trends, references, and whitespace in the market",
-                "role": "trend research",
-            },
-            {
-                "title": "Design & Materials",
-                "expertise": "garment construction, textiles, fit, tech packs",
-                "goal": "translate concepts into feasible designs with appropriate materials and fits",
-                "role": "design lead",
-            },
-            {
-                "title": "Merchandising & Pricing",
-                "expertise": "assortment planning, price architecture, margin targets",
-                "goal": "define assortment, price points, and margin structure across SKUs",
-                "role": "merchandising",
-            },
-            {
-                "title": "Supply Chain & Sustainability",
-                "expertise": "sourcing, MOQs, lead times, ethical manufacturing",
-                "goal": "propose sourcing plan, timelines, and sustainability tradeoffs",
-                "role": "operations & sustainability",
-            },
-            {
-                "title": "Brand & Visual Identity",
-                "expertise": "creative direction, lookbooks, content, campaigns",
-                "goal": "craft visual language and go‑to‑market assets to launch the collection",
-                "role": "brand/visuals",
-            },
-        ],
-    },
 }
 
 # Standard prompt suffixes for consistent outputs
@@ -521,34 +114,14 @@ def _rate_limit_ok(user_id: str, window_s: int = 60, max_calls: int = 3) -> bool
 
 # Icons and subtitles per category for the hero header
 CATEGORY_EMOJI = {
-    "Medical": "🩺",
-    "Entrepreneur ideas": "🚀",
-    "NFL fantasy player selection": "🏈",
-    "Personal finance and investing": "💰",
-    "Legal strategy and contracts": "⚖️",
-    "Software architecture and DevOps": "🛠️",
-    "Product design and UX": "🎨",
-    "Marketing and growth": "📈",
-    "Academic research and writing": "🎓",
-    "Career coaching and hiring": "👔",
-    "Fashion": "👗",
+    "Medical": "🩺"
 }
 
 CATEGORY_SUBTITLE = {
     "Medical": "Attending physician leading a multidisciplinary discussion to form a safe, guideline‑aware diagnostic and treatment plan.",
-    "Entrepreneur ideas": "Mentor‑led panel aligning product, growth, financing, operations, and legal to ship a compelling MVP and plan milestones.",
-    "NFL fantasy player selection": "Lead analyst synthesizing projections, injuries, matchups, and risk to drive weekly start/sit, waivers, and DFS strategy.",
-    "Personal finance and investing": "Portfolio manager coordinating tax, retirement, risk, real estate, and behavior for a durable, low‑cost plan.",
-    "Legal strategy and contracts": "General counsel orchestrating contracts, IP, employment, privacy, and litigation strategy to balance risk and outcomes.",
-    "Software architecture and DevOps": "Chief architect aligning cloud, security, data/ML, reliability, and QA for evolvable, efficient systems.",
-    "Product design and UX": "Head of design integrating research, interaction, content, accessibility, and systems for measurable UX outcomes.",
-    "Marketing and growth": "CMO unifying brand and performance with SEO, lifecycle, and analytics to build durable growth.",
-    "Academic research and writing": "PI guiding literature synthesis, methods, statistics, writing, and citations for rigorous, reproducible work.",
-    "Career coaching and hiring": "Head of talent coordinating resume, interviews, evaluation, compensation, and networking to land offers.",
-    "Fashion": "Creative director leading trend, design, merchandising, ops, and brand to deliver a cohesive collection.",
-}
+    }
 
-st.set_page_config(page_title="Advisors", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="Medical Advisors", page_icon="🩺", layout="wide")
 st.markdown(
     """
     <style>
@@ -574,17 +147,17 @@ with left_h:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     selected_category = "Medical"
     st.markdown("</div>", unsafe_allow_html=True)
-    _emoji = CATEGORY_EMOJI.get(selected_category, "🧠")
+    _emoji = CATEGORY_EMOJI.get(selected_category, "🩺")
     _subtitle = CATEGORY_SUBTITLE.get(selected_category, "Leader‑led expert panel tailored to the domain to deliver a clear, actionable plan.")
-    st.markdown(f"<div class='hero-title'>{_emoji} Advisors — {selected_category}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='hero-title'>{_emoji} Medical Advisors</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='hero-subtitle'>{_subtitle}</div>", unsafe_allow_html=True)
 with right_h:
     pass
 
 # Safety notice
 st.warning(
-    "Educational prototype. Not professional advice (medical, legal, financial, etc.). "
-    "For information only; consult qualified professionals for decisions. "
+    "Educational prototype. Not medical advice. "
+    "For information only; consult qualified clinicians for decisions. "
     "Do not submit confidential, personal, or protected health information (PHI).",
     icon="⚠️",
 )
@@ -604,8 +177,8 @@ with col_cfg:
             _default_api_key = st.secrets["OPENAI_API_KEY"] or ""
     except Exception:
         _default_api_key = ""
-    model = "gpt-5-nano"
-    num_rounds = 1
+    model = "gpt-5"
+    num_rounds = 2
     web_search = True
     cache_outputs = True
     fast_path = True
@@ -618,16 +191,6 @@ with col_cfg:
 # ---- Category-specific agenda placeholders, questions, and rules ----
 CATEGORY_AGENDA_PLACEHOLDER: Dict[str, str] = {
     "Medical": "e.g., 58-year-old with chest pain and dyspnea; vitals; relevant history/meds/allergies; onset/timeline; key concerns",
-    "Entrepreneur ideas": "e.g., Idea: AI copilot for X market; target users are...",
-    "NFL fantasy player selection": "e.g., 12-team PPR, Week 5 start/sit + waivers.\nStart/Sit: DK Metcalf vs DeVonta Smith; RB2: Rhamondre Stevenson vs James Conner\nWaivers: Nico Collins, Tank Dell\nInjuries: Cooper Kupp (hamstring)",
-    "Personal finance and investing": "e.g., Age 35, saving for retirement and down payment; risk tolerance...",
-    "Legal strategy and contracts": "e.g., SaaS MSA negotiation with enterprise; key terms to optimize...",
-    "Software architecture and DevOps": "e.g., Designing a multi-tenant SaaS on AWS with strict cost targets...",
-    "Product design and UX": "e.g., Improving onboarding for a B2B app; current drop-off points...",
-    "Marketing and growth": "e.g., SaaS with flat growth; goal: increase activation and retention...",
-    "Academic research and writing": "e.g., Plan a study on X; prior literature suggests...",
-    "Career coaching and hiring": "e.g., Transitioning to senior engineer role in 6 months; gaps are...",
-    "Fashion": "e.g., Concept for Spring/Summer collection; target customer, price band, and inspiration...",
 }
 
 CATEGORY_QUESTIONS: Dict[str, list[str]] = {
@@ -638,76 +201,6 @@ CATEGORY_QUESTIONS: Dict[str, list[str]] = {
         "What initial labs and imaging are recommended, with rationale?",
         "What evidence‑based initial management and disposition are appropriate?",
     ],
-    "Entrepreneur ideas": [
-        "What specific user problem is painful and frequent enough to solve now?",
-        "What is the narrow wedge/MVP and how will we validate it quickly?",
-        "What are the primary growth loops and activation metrics?",
-        "What milestones de-risk fundraising and sequencing of capital?",
-        "What legal/compliance or operational risks must be mitigated?",
-    ],
-    "NFL fantasy player selection": [
-        "Start/Sit example: DK Metcalf vs DeVonta Smith — who and why?",
-        "RB2 choice: Rhamondre Stevenson vs James Conner — projections, matchup, usage?",
-        "Waiver priorities: Nico Collins, Tank Dell — expected value and FAAB bids?",
-        "DFS stacks/leverage: which QB-WR/TE pairings and bring-backs look optimal?",
-        "News/weather adjustments (e.g., Cooper Kupp hamstring) that materially move projections?",
-    ],
-    "Personal finance and investing": [
-        "What is the appropriate asset allocation given horizon and risk?",
-        "How can we minimize taxes across accounts this year and long-term?",
-        "What insurance and emergency fund levels are prudent?",
-        "What real-estate considerations complement the portfolio?",
-        "What behavioral risks may derail the plan and how to mitigate them?",
-    ],
-    "Legal strategy and contracts": [
-        "What is the desired business outcome and acceptable risk envelope?",
-        "Which contract terms most impact risk allocation and remedies?",
-        "What IP, privacy, and employment issues require special handling?",
-        "What negotiation strategy, concessions, and fallbacks should we use?",
-        "What litigation or dispute strategies should be pre-planned?",
-    ],
-    "Software architecture and DevOps": [
-        "What architecture best aligns with domain and future evolution?",
-        "What SLIs/SLOs, capacity, and reliability targets are appropriate?",
-        "What data/ML platform choices support current and near-term needs?",
-        "What security controls and threat model are required by design?",
-        "How do we ensure testability, CI/CD, and cost efficiency?",
-    ],
-    "Product design and UX": [
-        "Who are the target users and unmet needs (JTBD)?",
-        "What onboarding and interaction changes will move key metrics?",
-        "What content and IA adjustments improve clarity and success?",
-        "How do we ensure accessibility (WCAG) and inclusivity?",
-        "What design system components/tokens are required?",
-    ],
-    "Marketing and growth": [
-        "What positioning and category narrative create distinctiveness?",
-        "Which growth loops (acquisition/activation/retention) should we build?",
-        "What SEO and content strategies drive durable demand?",
-        "How will we measure incrementality and allocate budget?",
-        "What lifecycle/CRM programs increase LTV and reduce churn?",
-    ],
-    "Academic research and writing": [
-        "What is the precise research question and causal claim?",
-        "What prior literature and evidence map inform design?",
-        "What study design and methods minimize bias and maximize power?",
-        "What analysis plan and uncertainty quantification will we use?",
-        "What writing and submission strategy fits the target venue?",
-    ],
-    "Career coaching and hiring": [
-        "What target role and level are realistic in the chosen timeframe?",
-        "What skill gaps and projects best demonstrate readiness?",
-        "What resume/LinkedIn changes improve signal and discovery?",
-        "What interview preparation plan yields the highest ROI?",
-        "What compensation, negotiation, and networking strategy should we use?",
-    ],
-    "Fashion": [
-        "What is the concept, muse, and story that unify the collection?",
-        "What assortment, color/material palette, and price architecture are appropriate?",
-        "What sourcing plan, MOQs, and timelines fit the launch window?",
-        "What fit, construction, and QA considerations are critical?",
-        "What brand/visual strategy and channel plan will launch effectively?",
-    ],
 }
 
 CATEGORY_RULES: Dict[str, list[str]] = {
@@ -716,66 +209,6 @@ CATEGORY_RULES: Dict[str, list[str]] = {
         "Prioritize safety: identify red flags, contraindications, and required monitoring.",
         "State diagnostic uncertainty and outline alternatives and contingencies.",
         "Cite guideline‑aligned recommendations when possible; prefer least‑harm options.",
-    ],
-    "Entrepreneur ideas": [
-        "Prefer falsifiable hypotheses and smallest viable tests.",
-        "Quantify unit economics and concentrate on retention over vanity metrics.",
-        "State risks and regulatory constraints explicitly.",
-        "Avoid generic platitudes; propose concrete next steps.",
-    ],
-    "NFL fantasy player selection": [
-        "Tie recommendations to projections, injury reports, and matchup data.",
-        "State uncertainty ranges and alternatives (floor/ceiling).",
-        "Avoid hindsight bias; document assumptions and news dependencies.",
-        "Respect league format and scoring (e.g., PPR vs standard).",
-    ],
-    "Personal finance and investing": [
-        "Not financial advice; provide educational guidance only.",
-        "Favor low-cost, diversified strategies; disclose assumptions and risks.",
-        "Consider taxes, account types, and time horizon explicitly.",
-        "Quantify ranges rather than false precision.",
-    ],
-    "Legal strategy and contracts": [
-        "Not legal advice; educational discussion only.",
-        "Highlight jurisdictional differences and compliance requirements.",
-        "Clarify tradeoffs between risk and business outcomes.",
-        "Avoid conclusory statements without stating assumptions.",
-    ],
-    "Software architecture and DevOps": [
-        "Prefer simple, evolvable designs; manage complexity explicitly.",
-        "State reliability/cost/security tradeoffs and SLO impacts.",
-        "Document assumptions about scale and failure modes.",
-        "Provide concrete runbooks and testing strategies.",
-    ],
-    "Product design and UX": [
-        "Ground decisions in user research and usability heuristics.",
-        "Ensure accessibility and inclusive design.",
-        "Favor prototypes and measurable experiments.",
-        "Keep copy clear and consistent with voice/tone.",
-    ],
-    "Marketing and growth": [
-        "Avoid vanity metrics; focus on causal attribution and LTV.",
-        "Propose concrete experiments with measurement plans.",
-        "Consider brand consistency alongside performance goals.",
-        "State data sources and quality caveats.",
-    ],
-    "Academic research and writing": [
-        "Follow ethical standards and preregistration when applicable.",
-        "Report uncertainty, not just point estimates.",
-        "Cite sources precisely; avoid overgeneralization.",
-        "Ensure reproducibility of analyses and references.",
-    ],
-    "Career coaching and hiring": [
-        "Avoid confidential employer information; respect NDAs.",
-        "Base advice on public rubrics and role expectations.",
-        "Encourage evidence-backed preparation and practice.",
-        "Tailor plans to constraints and timeline.",
-    ],
-    "Fashion": [
-        "Not professional advice; validate with sampling and fit tests.",
-        "State assumptions on costs, MOQs, and lead times explicitly.",
-        "Consider sustainability, compliance, and ethical sourcing.",
-        "Propose concrete next steps with calendar checkpoints.",
     ],
 }
 

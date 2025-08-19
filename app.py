@@ -563,11 +563,16 @@ if st.button("Verify", key="captcha_verify_btn_main"):
     except Exception:
         st.error("Enter a number")
 
-# Sticky run bar
-st.markdown("<div class='runbar'>", unsafe_allow_html=True)
-run_btn = st.button("Run Advisors", type="primary", use_container_width=True,
-                    disabled=not bool(st.session_state.get("captcha_ok", False)))
-st.markdown("</div>", unsafe_allow_html=True)
+# Sticky run bar (hidden until needed)
+run_btn = False
+if bool(st.session_state.get("captcha_ok", False)):
+    st.markdown("<div class='runbar'>", unsafe_allow_html=True)
+    run_btn = st.button(
+        "Run Advisors",
+        type="primary",
+        use_container_width=True,
+    )
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # Keyboard shortcut (Cmd/Ctrl+Enter)
 components.html(

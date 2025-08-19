@@ -179,7 +179,7 @@ with col_cfg:
             _default_api_key = st.secrets["OPENAI_API_KEY"] or ""
     except Exception:
         _default_api_key = ""
-    model = "gpt-5"
+    model = "gpt-5-mini"
     num_rounds = 2
     web_search = True
     cache_outputs = True

@@ -8,6 +8,7 @@ Medical Advisors is an AI‑assisted, multi‑agent app that coordinates medical
 - Streamlit UI for agenda, questions, rules, and team configuration
 - Clarity Assistant: auto‑suggests clarifying questions; your answers guide the agents
 - Optional PubMed search (via the underlying framework)
+ - Consensus run typically completes in 2–5 minutes
 
 ## Safety & Scope
 - Educational/prototype use only; not medical advice
@@ -49,11 +50,20 @@ streamlit run app.py
 1) Describe your medical case in “Case Description (Agenda)”
 2) Optionally click “Suggest Questions” and answer clarifiers (Clarity Assistant)
 3) Review the prefilled team (leader + specialists) and edit titles/expertise if desired
-4) Click “Run Advisors”, then review tabs: Consensus Summary, Transcript, Raw JSON
+4) Click “Run Advisors” (consensus typically takes 2–5 minutes), then review tabs: Consensus Summary, Transcript, Raw JSON
 5) Saved artifacts: `advisor_meetings/<session>.md` and `<session>.json`
 
+### Default team (editable)
+- Attending Physician (lead)
+- Emergency Medicine
+- Internal Medicine
+- Radiology
+- Cardiology
+- Insurance Expert
+- Clinical Pharmacist
+
 ## Configuration Tips
-- Models: Clarifying questions use your selection (e.g., gpt‑5‑nano). Team meeting uses GPT‑4.1‑nano when a gpt‑5* model is selected (Assistants requirement).
+- Models: Default is `gpt‑5‑mini`. Clarifying questions use your selection. Team meeting uses `GPT‑4.1‑nano` when a `gpt‑5*` model is selected (Assistants requirement).
 - Fast mode: Uses 1 round and smaller specialist models for lower latency/cost.
 - Web search: DuckDuckGo summaries can provide background context; disable for offline runs.
 - Caching: Enable “Cache outputs” to reuse recent results; turn off when iterating prompts.

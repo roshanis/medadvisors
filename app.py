@@ -185,7 +185,7 @@ with col_cfg:
     num_rounds = 2
     web_search = True
     cache_outputs = True
-    fast_path = True
+    fast_path = False
     user_tag = ""
 
 # Removed Load Previous Session UI per user request

@@ -395,6 +395,61 @@ def build_web_context(category: str, agenda_text: str) -> str:
     except Exception:
         return ""
 
+def build_pubmed_context(agenda_text: str, max_results: int = 5) -> tuple[str, str]:
+    """Fetch brief PubMed highlights for the agenda and return (query, markdown)."""
+    try:
+        import os as _os
+        import json as _json
+        from urllib.parse import urlencode, quote_plus as _qp
+        from urllib.request import urlopen as _urlopen
+
+        # Simple query: agenda free text + filters
+        user_q = (agenda_text or "").strip()
+        if not user_q:
+            return ("", "")
+        term = f"{user_q} AND (english[la]) AND (" + " OR ".join([
+            "last 5 years[dp]",
+            "systematic[sb]",
+        ]) + ")"
+        params = {
+            "db": "pubmed",
+            "retmode": "json",
+            "retmax": str(max_results),
+            "term": term,
+        }
+        api_key = _os.environ.get("NCBI_API_KEY")
+        if api_key:
+            params["api_key"] = api_key
+        base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+        esearch_url = f"{base}/esearch.fcgi?{urlencode(params, quote_via=_qp)}"
+        with _urlopen(esearch_url, timeout=10) as r:
+            es = _json.loads(r.read().decode("utf-8"))
+        idlist = (es.get("esearchresult", {}).get("idlist") or [])[:max_results]
+        if not idlist:
+            return (term, "")
+        esum_params = {
+            "db": "pubmed",
+            "retmode": "json",
+            "id": ",".join(idlist),
+        }
+        if api_key:
+            esum_params["api_key"] = api_key
+        esum_url = f"{base}/esummary.fcgi?{urlencode(esum_params, quote_via=_qp)}"
+        with _urlopen(esum_url, timeout=10) as r:
+            summary = _json.loads(r.read().decode("utf-8"))
+        result = summary.get("result", {})
+        items = []
+        for pmid in idlist:
+            rec = result.get(pmid) or {}
+            title = rec.get("title") or "(no title)"
+            src = rec.get("source") or ""
+            yr = rec.get("pubdate") or rec.get("sortpubdate") or ""
+            items.append(f"- {title} — {src} {yr} (PMID: {pmid})")
+        md = ("PubMed highlights:\n" + "\n".join(items)) if items else ""
+        return (term, md)
+    except Exception:
+        return ("", "")
+
 # ----- Full meeting caching -----
 def _serialize_agent(agent: Agent) -> Dict[str, str]:
     return {
@@ -742,6 +797,13 @@ if run_btn:
             clarifications_text = "\n".join(qa_lines)
         # Optional web search context (DuckDuckGo)
         web_context_text = build_web_context(selected_category, agenda) if web_search else ""
+        # Always fetch PubMed context and log query
+        pm_query, pm_md = build_pubmed_context(agenda)
+        if pm_query:
+            with st.expander("PubMed query and highlights", expanded=False):
+                st.code(f"Query: {pm_query}", language="text")
+                if pm_md:
+                    st.code(pm_md, language="markdown")
         if web_context_text:
             with st.expander("Web search highlights (DuckDuckGo)", expanded=False):
                 st.code(web_context_text, language="markdown")
@@ -790,7 +852,7 @@ if run_btn:
                     )
                     summary = run_fast_completions(
                         agenda=agenda,
-                        contexts=tuple(x for x in (clarifications_text, web_context_text) if x),
+                        contexts=tuple(x for x in (clarifications_text, web_context_text, pm_md) if x),
                         lead_spec=lead_spec,
                         member_specs=member_specs,
                         model_name=model,
@@ -830,7 +892,7 @@ if run_btn:
                         agenda=agenda,
                         agenda_questions=agenda_qs,
                         agenda_rules=agenda_rules,
-                        contexts=tuple(x for x in (clarifications_text, web_context_text) if x),
+                        contexts=tuple(x for x in (clarifications_text, web_context_text, pm_md) if x),
                         num_rounds=st.session_state.get("num_rounds_override", None) or int(num_rounds),
                         pubmed_search=True,
                         team_lead_data=_serialize_agent(team_lead),
@@ -858,7 +920,7 @@ if run_btn:
                         team_members=team_members_live,
                         agenda_questions=agenda_qs,
                         agenda_rules=agenda_rules,
-                        contexts=tuple(x for x in (clarifications_text, web_context_text) if x),
+                        contexts=tuple(x for x in (clarifications_text, web_context_text, pm_md) if x),
                         num_rounds=st.session_state.get("num_rounds_override", None) or int(num_rounds),
                         temperature=1.0,
                         pubmed_search=True,

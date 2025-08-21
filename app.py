@@ -832,7 +832,7 @@ if run_btn:
                         agenda_rules=agenda_rules,
                         contexts=tuple(x for x in (clarifications_text, web_context_text) if x),
                         num_rounds=st.session_state.get("num_rounds_override", None) or int(num_rounds),
-                        pubmed_search=False,
+                        pubmed_search=True,
                         team_lead_data=_serialize_agent(team_lead),
                         team_members_data=tuple(_serialize_agent(m) for m in team_members),
                         save_name=auto_save_name,
@@ -861,7 +861,7 @@ if run_btn:
                         contexts=tuple(x for x in (clarifications_text, web_context_text) if x),
                         num_rounds=st.session_state.get("num_rounds_override", None) or int(num_rounds),
                         temperature=1.0,
-                        pubmed_search=False,
+                        pubmed_search=True,
                         return_summary=True,
                     )
                 bar.progress(80, text="Summarizing consensus…")

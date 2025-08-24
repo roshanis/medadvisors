@@ -771,10 +771,6 @@ if run_btn:
     if not _rate_limit_ok(_user_id, window_s=60, max_calls=3):
         st.error("Rate limit reached. Please wait a minute and try again.")
         st.stop()
-    # Enforce simple CAPTCHA before running
-    if not st.session_state.get("captcha_ok"):
-        st.error("Please verify the CAPTCHA in the sidebar before running.")
-        st.stop()
     if not _default_api_key:
         st.error("OpenAI API key missing. Set it in .streamlit/secrets.toml or the environment.")
     elif not agenda.strip():

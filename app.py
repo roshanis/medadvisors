@@ -23,9 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent
 CATEGORY_PRESETS: Dict[str, Dict] = {
     "Medical": {
         "lead": {
-            "title": "Attending Physician",
-            "expertise": "evidence-based medicine, multidisciplinary care",
-            "goal": "synthesize differential diagnosis, diagnostics, and initial management plan with risks and contingencies",
+            "title": "Internal Medicine",
+            "expertise": "differential diagnosis, inpatient management",
+            "goal": "construct prioritized differential and inpatient plan",
             "role": "team lead and final arbiter",
         },
         "members": [
@@ -34,12 +34,6 @@ CATEGORY_PRESETS: Dict[str, Dict] = {
                 "expertise": "triage, resuscitation, stabilization",
                 "goal": "prioritize ABCs, immediate stabilization steps, and initial orders",
                 "role": "emergency",
-            },
-            {
-                "title": "Internal Medicine",
-                "expertise": "differential diagnosis, inpatient management",
-                "goal": "construct prioritized differential and inpatient plan",
-                "role": "hospitalist",
             },
             {
                 "title": "Radiology",
@@ -924,9 +918,13 @@ if run_btn:
                         display_summary = _md[start_idx:] if start_idx != -1 else _md
                 except Exception:
                     pass
-                tabs = st.tabs(["✅ Next Steps", "🗒️ Transcript", "🧱 Raw JSON"]) 
-                # Next Steps tab: extract from display_summary or transcript
+                tabs = st.tabs(["🧭 Consensus", "✅ Next Steps", "🗒️ Transcript", "🧱 Raw JSON"]) 
+                # Consensus tab: show synthesized consensus (or fallback)
                 with tabs[0]:
+                    st.subheader("Consensus")
+                    st.markdown(display_summary or "(No consensus available)")
+                # Next Steps tab: extract from display_summary or transcript
+                with tabs[1]:
                     def _extract_next_steps(text: str) -> str:
                         if not text:
                             return ""
@@ -953,10 +951,10 @@ if run_btn:
                     st.subheader("Next Steps")
                     st.markdown(next_steps_md or "(No next steps found)")
 
-                with tabs[1]:
+                with tabs[2]:
                     # Transcript
                     render_session_artifacts(auto_save_name)
-                with tabs[2]:
+                with tabs[3]:
                     # Only render JSON section
                     save_dir = BASE_DIR / "advisor_meetings"
                     json_path = save_dir / f"{auto_save_name}.json"

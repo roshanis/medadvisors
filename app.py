@@ -924,27 +924,9 @@ if run_btn:
                         display_summary = _md[start_idx:] if start_idx != -1 else _md
                 except Exception:
                     pass
-                tabs = st.tabs(["🧭 Consensus Summary", "✅ Next Steps", "🗒️ Transcript", "🧱 Raw JSON"]) 
-                with tabs[0]:
-                    st.markdown('<div id="consensus-summary-anchor"></div>', unsafe_allow_html=True)
-                    output_container.subheader("Consensus Summary")
-                    output_container.markdown(display_summary or "(No summary available)")
-                    # Auto-scroll to summary when ready
-                    components.html(
-                        """
-                        <script>
-                        setTimeout(function(){
-                          var el = parent.document.querySelector('#consensus-summary-anchor');
-                          if (el && el.scrollIntoView) {
-                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                          }
-                        }, 100);
-                        </script>
-                        """,
-                        height=0,
-                    )
+                tabs = st.tabs(["✅ Next Steps", "🗒️ Transcript", "🧱 Raw JSON"]) 
                 # Next Steps tab: extract from display_summary or transcript
-                with tabs[1]:
+                with tabs[0]:
                     def _extract_next_steps(text: str) -> str:
                         if not text:
                             return ""
@@ -971,10 +953,10 @@ if run_btn:
                     st.subheader("Next Steps")
                     st.markdown(next_steps_md or "(No next steps found)")
 
-                with tabs[2]:
+                with tabs[1]:
                     # Transcript
                     render_session_artifacts(auto_save_name)
-                with tabs[3]:
+                with tabs[2]:
                     # Only render JSON section
                     save_dir = BASE_DIR / "advisor_meetings"
                     json_path = save_dir / f"{auto_save_name}.json"

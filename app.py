@@ -909,11 +909,26 @@ if run_btn:
                 bar.progress(80, text="Summarizing consensus…")
                 _prune_web_sessions(save_dir, max_sessions=5)
                 bar.progress(100, text="Done")
+                # Build a fallback summary from the transcript if the direct summary is empty
+                display_summary = summary or ""
+                try:
+                    md_fallback_path = save_dir / f"{auto_save_name}.md"
+                    if (not display_summary) and md_fallback_path.exists():
+                        with open(md_fallback_path, "r", encoding="utf-8") as _f:
+                            _md = _f.read()
+                        start_idx = -1
+                        for _anchor in ("## Consensus Summary", "### Recommendation"):
+                            start_idx = _md.find(_anchor)
+                            if start_idx != -1:
+                                break
+                        display_summary = _md[start_idx:] if start_idx != -1 else _md
+                except Exception:
+                    pass
                 tabs = st.tabs(["🧭 Consensus Summary", "🗒️ Transcript", "🧱 Raw JSON"]) 
                 with tabs[0]:
                     st.markdown('<div id="consensus-summary-anchor"></div>', unsafe_allow_html=True)
                     output_container.subheader("Consensus Summary")
-                    output_container.markdown(summary)
+                    output_container.markdown(display_summary or "(No summary available)")
                     # Auto-scroll to summary when ready
                     components.html(
                         """

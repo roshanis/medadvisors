@@ -179,6 +179,9 @@ with col_cfg:
     try:
         if "OPENAI_API_KEY" in st.secrets:
             _default_api_key = st.secrets["OPENAI_API_KEY"] or ""
+        # Wire NCBI_API_KEY from secrets into environment for PubMed calls
+        if "NCBI_API_KEY" in st.secrets and st.secrets["NCBI_API_KEY"]:
+            os.environ["NCBI_API_KEY"] = st.secrets["NCBI_API_KEY"]
     except Exception:
         _default_api_key = ""
     model = "gpt-5-mini"

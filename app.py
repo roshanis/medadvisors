@@ -393,47 +393,73 @@ def build_web_context(category: str, agenda_text: str) -> str:
         return ""
 
 def build_pubmed_context(agenda_text: str, max_results: int = 5) -> tuple[str, str, dict, dict]:
-    """Fetch brief PubMed highlights for the agenda and return (query, markdown, esearch_json, esummary_json)."""
+    """Fetch brief PubMed highlights for the agenda and return (query, markdown, esearch_json, esummary_json).
+
+    Strategy:
+    1) Constrained query (English, last 5y or systematic).
+    2) If empty, relax to title/abstract with English and relevance sort, larger retmax.
+    3) If still empty, append 'clinical guidelines' to bias toward guidance.
+    """
     try:
         import os as _os
         import json as _json
         from urllib.parse import urlencode, quote_plus as _qp
         from urllib.request import urlopen as _urlopen
 
-        # Simple query: agenda free text + filters
         user_q = (agenda_text or "").strip()
         if not user_q:
             return ("", "", {}, {})
-        term = f"{user_q} AND (english[la]) AND (" + " OR ".join([
-            "last 5 years[dp]",
-            "systematic[sb]",
-        ]) + ")"
-        params = {
-            "db": "pubmed",
-            "retmode": "json",
-            "retmax": str(max_results),
-            "term": term,
-        }
-        api_key = _os.environ.get("NCBI_API_KEY")
-        if api_key:
-            params["api_key"] = api_key
-        base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
-        esearch_url = f"{base}/esearch.fcgi?{urlencode(params, quote_via=_qp)}"
-        with _urlopen(esearch_url, timeout=10) as r:
-            es = _json.loads(r.read().decode("utf-8"))
+
+        def _esearch(_term: str, _retmax: int) -> dict:
+            params = {
+                "db": "pubmed",
+                "retmode": "json",
+                "retmax": str(_retmax),
+                "term": _term,
+                "sort": "relevance",
+            }
+            _api_key = _os.environ.get("NCBI_API_KEY")
+            if _api_key:
+                params["api_key"] = _api_key
+            _base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+            _url = f"{_base}/esearch.fcgi?{urlencode(params, quote_via=_qp)}"
+            with _urlopen(_url, timeout=20) as r:
+                return _json.loads(r.read().decode("utf-8"))
+
+        def _esummary(_ids: list[str]) -> dict:
+            esum_params = {
+                "db": "pubmed",
+                "retmode": "json",
+                "id": ",".join(_ids),
+            }
+            _api_key = _os.environ.get("NCBI_API_KEY")
+            if _api_key:
+                esum_params["api_key"] = _api_key
+            _base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+            _url = f"{_base}/esummary.fcgi?{urlencode(esum_params, quote_via=_qp)}"
+            with _urlopen(_url, timeout=20) as r:
+                return _json.loads(r.read().decode("utf-8"))
+
+        # Pass 1
+        term = f"{user_q} AND (english[la]) AND ((last 5 years[dp]) OR (systematic[sb]))"
+        es = _esearch(term, max_results)
         idlist = (es.get("esearchresult", {}).get("idlist") or [])[:max_results]
+
+        # Pass 2
+        if not idlist:
+            term = f"({user_q})[tiab] AND english[la]"
+            es = _esearch(term, max_results * 2)
+            idlist = (es.get("esearchresult", {}).get("idlist") or [])[: max_results * 2]
+
+        # Pass 3
+        if not idlist:
+            term = f"({user_q} clinical guidelines)[tiab]"
+            es = _esearch(term, max_results * 2)
+            idlist = (es.get("esearchresult", {}).get("idlist") or [])[: max_results * 2]
+
         if not idlist:
             return (term, "", es, {})
-        esum_params = {
-            "db": "pubmed",
-            "retmode": "json",
-            "id": ",".join(idlist),
-        }
-        if api_key:
-            esum_params["api_key"] = api_key
-        esum_url = f"{base}/esummary.fcgi?{urlencode(esum_params, quote_via=_qp)}"
-        with _urlopen(esum_url, timeout=10) as r:
-            summary = _json.loads(r.read().decode("utf-8"))
+        summary = _esummary(idlist)
         result = summary.get("result", {})
         items = []
         for pmid in idlist:

@@ -603,24 +603,7 @@ with st.expander("Edit team", expanded=False):
                 )
             )
 
-# Inline CAPTCHA (above button)
-if "captcha_sum" not in st.session_state:
-    a, b = random.randint(1, 9), random.randint(1, 9)
-    st.session_state.captcha_q = f"What is {a} + {b}?"
-    st.session_state.captcha_sum = a + b
-    st.session_state.captcha_ok = False
-st.caption("Quick check")
-cap_ans = st.text_input(st.session_state.captcha_q, key="captcha_ans_main")
-if st.button("Verify", key="captcha_verify_btn_main"):
-    try:
-        st.session_state.captcha_ok = int(cap_ans) == st.session_state.captcha_sum
-        if st.session_state.captcha_ok:
-            st.success("Verified")
-        else:
-            st.error("Try again")
-    except Exception:
-        st.error("Enter a number")
-
+# CAPTCHA UI removed
 # Sticky run bar (always visible)
 st.markdown("<div class='runbar'>", unsafe_allow_html=True)
 st.caption("Consensus typically takes 2–5 minutes.")

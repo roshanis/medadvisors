@@ -924,7 +924,7 @@ if run_btn:
                         display_summary = _md[start_idx:] if start_idx != -1 else _md
                 except Exception:
                     pass
-                tabs = st.tabs(["🧭 Consensus Summary", "🗒️ Transcript", "🧱 Raw JSON"]) 
+                tabs = st.tabs(["🧭 Consensus Summary", "✅ Next Steps", "🗒️ Transcript", "🧱 Raw JSON"]) 
                 with tabs[0]:
                     st.markdown('<div id="consensus-summary-anchor"></div>', unsafe_allow_html=True)
                     output_container.subheader("Consensus Summary")
@@ -943,10 +943,38 @@ if run_btn:
                         """,
                         height=0,
                     )
+                # Next Steps tab: extract from display_summary or transcript
                 with tabs[1]:
+                    def _extract_next_steps(text: str) -> str:
+                        if not text:
+                            return ""
+                        anchors = ("## Next Steps", "### Next Steps", "## Recommendation", "### Recommendation")
+                        start = -1
+                        for a in anchors:
+                            start = text.find(a)
+                            if start != -1:
+                                break
+                        if start == -1:
+                            return ""
+                        return text[start:]
+
+                    next_steps_md = _extract_next_steps(display_summary)
+                    if not next_steps_md:
+                        try:
+                            md_path = BASE_DIR / "advisor_meetings" / f"{auto_save_name}.md"
+                            if md_path.exists():
+                                with open(md_path, "r", encoding="utf-8") as f:
+                                    full_md = f.read()
+                                next_steps_md = _extract_next_steps(full_md)
+                        except Exception:
+                            next_steps_md = ""
+                    st.subheader("Next Steps")
+                    st.markdown(next_steps_md or "(No next steps found)")
+
+                with tabs[2]:
                     # Transcript
                     render_session_artifacts(auto_save_name)
-                with tabs[2]:
+                with tabs[3]:
                     # Only render JSON section
                     save_dir = BASE_DIR / "advisor_meetings"
                     json_path = save_dir / f"{auto_save_name}.json"

@@ -392,8 +392,8 @@ def build_web_context(category: str, agenda_text: str) -> str:
     except Exception:
         return ""
 
-def build_pubmed_context(agenda_text: str, max_results: int = 5) -> tuple[str, str]:
-    """Fetch brief PubMed highlights for the agenda and return (query, markdown)."""
+def build_pubmed_context(agenda_text: str, max_results: int = 5) -> tuple[str, str, dict, dict]:
+    """Fetch brief PubMed highlights for the agenda and return (query, markdown, esearch_json, esummary_json)."""
     try:
         import os as _os
         import json as _json
@@ -403,7 +403,7 @@ def build_pubmed_context(agenda_text: str, max_results: int = 5) -> tuple[str, s
         # Simple query: agenda free text + filters
         user_q = (agenda_text or "").strip()
         if not user_q:
-            return ("", "")
+            return ("", "", {}, {})
         term = f"{user_q} AND (english[la]) AND (" + " OR ".join([
             "last 5 years[dp]",
             "systematic[sb]",
@@ -423,7 +423,7 @@ def build_pubmed_context(agenda_text: str, max_results: int = 5) -> tuple[str, s
             es = _json.loads(r.read().decode("utf-8"))
         idlist = (es.get("esearchresult", {}).get("idlist") or [])[:max_results]
         if not idlist:
-            return (term, "")
+            return (term, "", es, {})
         esum_params = {
             "db": "pubmed",
             "retmode": "json",
@@ -443,9 +443,9 @@ def build_pubmed_context(agenda_text: str, max_results: int = 5) -> tuple[str, s
             yr = rec.get("pubdate") or rec.get("sortpubdate") or ""
             items.append(f"- {title} — {src} {yr} (PMID: {pmid})")
         md = ("PubMed highlights:\n" + "\n".join(items)) if items else ""
-        return (term, md)
+        return (term, md, es, summary)
     except Exception:
-        return ("", "")
+        return ("", "", {}, {})
 
 # ----- Full meeting caching -----
 def _serialize_agent(agent: Agent) -> Dict[str, str]:
@@ -771,13 +771,17 @@ if run_btn:
             clarifications_text = "\n".join(qa_lines)
         # Optional web search context (DuckDuckGo)
         web_context_text = build_web_context(selected_category, agenda) if web_search else ""
-        # Always fetch PubMed context and log query
-        pm_query, pm_md = build_pubmed_context(agenda)
+        # Always fetch PubMed context and log query and raw responses
+        pm_query, pm_md, pm_esearch, pm_esummary = build_pubmed_context(agenda)
         if pm_query:
             with st.expander("PubMed query and highlights", expanded=False):
                 st.code(f"Query: {pm_query}", language="text")
                 if pm_md:
                     st.code(pm_md, language="markdown")
+                with st.expander("Raw ESearch JSON", expanded=False):
+                    st.json(pm_esearch)
+                with st.expander("Raw ESummary JSON", expanded=False):
+                    st.json(pm_esummary)
         if web_context_text:
             with st.expander("Web search highlights (DuckDuckGo)", expanded=False):
                 st.code(web_context_text, language="markdown")
@@ -852,6 +856,9 @@ if run_btn:
                             "agenda": agenda,
                             "clarifications": clarifications_text or "",
                             "web_context": web_context_text or "",
+                            "pubmed_query": pm_query,
+                            "pubmed_esearch": pm_esearch,
+                            "pubmed_esummary": pm_esummary,
                             "team_lead": lead_spec,
                             "team_members": list(member_specs),
                             "summary_md": summary,

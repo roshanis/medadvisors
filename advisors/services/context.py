@@ -115,9 +115,7 @@ def build_pubmed_context(agenda_text: str, max_results: int = 5) -> Tuple[str, s
             first_author = authors[0]["name"] if authors else ""
             year = (doc.get("pubdate") or "").split(" ")[0]
             url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
-            md_lines.append(
-                f"- {title} — {first_author} et al., {journal} ({year}). {url}"
-            )
+            md_lines.append(f"- {title} - {first_author} et al., {journal} ({year}). {url}")
         return (term, "\n".join(md_lines), es, esummary)
     except Exception:
         return ("", "", {}, {})

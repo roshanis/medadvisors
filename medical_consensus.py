@@ -168,7 +168,7 @@ def main() -> None:
         (SAVE_DIR / f"{save_name}.md").write_text(
             "\n\n".join(
                 [
-                    "# Medical Advisors — Transcript (CLI Fast Path)",
+                    "# Medical Advisors - Transcript (CLI Fast Path)",
                     f"## Agenda\n\n{agenda}",
                     *(f"## Context\n\n{ctx}" for ctx in contexts_tuple),
                     "## Consensus Summary\n\n" + (summary or "(No summary generated)"),

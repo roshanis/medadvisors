@@ -1,95 +1,38 @@
 import os
-import random
 import time
 import secrets
 import concurrent.futures
 from collections import defaultdict, deque
 from pathlib import Path
-import streamlit as st
 import json
-from typing import List, Dict, Tuple
-from openai import OpenAI
-try:
-    from duckduckgo_search import DDGS  # type: ignore
-except Exception:
-    DDGS = None  # optional dependency
+from typing import Dict, List
+
+import streamlit as st
 import streamlit.components.v1 as components
+from advisors.prompts import (
+    ACTIONABILITY_RULE,
+    ADVICE_RULE,
+    PROMPT_GOAL_SUFFIX_LEAD,
+    PROMPT_GOAL_SUFFIX_MEMBER,
+)
+from advisors.presets import (
+    CATEGORY_AGENDA_PLACEHOLDER,
+    CATEGORY_EMOJI,
+    CATEGORY_PRESETS,
+    CATEGORY_QUESTIONS,
+    CATEGORY_RULES,
+    CATEGORY_SUBTITLE,
+)
+from advisors.services.context import build_pubmed_context, build_web_context
+from advisors.services.meeting_fast import run_fast_completions
+from advisors.services.openai_client import get_openai_client
+from advisors.services.run_modes import DEFAULT_MODE_KEY, RUN_MODES, RunMode
 from virtual_lab.agent import Agent
 from virtual_lab.run_meeting import run_meeting
 
 BASE_DIR = Path(__file__).resolve().parent
 
-# ---- Category presets (leader + specialists with goals/roles) ----
-CATEGORY_PRESETS: Dict[str, Dict] = {
-    "Medical": {
-        "lead": {
-            "title": "Internal Medicine",
-            "expertise": "differential diagnosis, inpatient management",
-            "goal": "construct prioritized differential and inpatient plan",
-            "role": "team lead and final arbiter",
-        },
-        "members": [
-            {
-                "title": "Emergency Medicine",
-                "expertise": "triage, resuscitation, stabilization",
-                "goal": "prioritize ABCs, immediate stabilization steps, and initial orders",
-                "role": "emergency",
-            },
-            {
-                "title": "Radiology",
-                "expertise": "imaging selection and interpretation",
-                "goal": "recommend appropriate imaging and interpret key findings",
-                "role": "radiology",
-            },
-            {
-                "title": "Cardiology",
-                "expertise": "ACS workup, arrhythmias, heart failure",
-                "goal": "assess cardiac risks, tests, and management",
-                "role": "cardiology",
-            },
-            {
-                "title": "Insurance Expert",
-                "expertise": "coverage criteria, prior authorization, coding/billing",
-                "goal": "identify coverage constraints, recommend documentation for approvals, and estimate patient cost",
-                "role": "insurance",
-            },
-            {
-                "title": "Clinical Pharmacist",
-                "expertise": "dosing, interactions, renal/hepatic adjustments",
-                "goal": "optimize medications, dosing, and monitoring parameters",
-                "role": "pharmacy",
-            },
-        ],
-    },
-}
-
-# Standard prompt suffixes for consistent outputs
-PROMPT_GOAL_SUFFIX_LEAD = (
-    " Produce a final consensus under the headings: Assumptions; Options (pros/cons); Recommendation; "
-    "Risks & Mitigations; Next Steps. The Recommendation MUST be a short numbered action plan (3–7 items). "
-    "For EACH action, include these fields explicitly: Action (strong verb), Owner, Deadline (date or timeframe), "
-    "Steps (how to execute), Tools/Resources (links if mentioned), Success Metric (target), Risk & Mitigation. "
-    "Avoid vague language (no 'leverage', 'optimize' without details). Be concrete and succinct."
-)
-PROMPT_GOAL_SUFFIX_MEMBER = (
-    " Provide concrete, verifiable details; quantify where possible; explicitly state uncertainty; "
-    "cite sources when literature/search is enabled. Focus on advising, not just critiquing: "
-    "propose specific actions with rationale, offer alternatives and tradeoffs, and suggest next steps."
-)
-
-# Additional guardrail to ensure actionable outputs
-ACTIONABILITY_RULE = (
-    "Recommendation must be a numbered action plan (3–7 items). For each action, specify: Action, Owner, "
-    "Deadline, Steps, Tools/Resources, Success Metric, Risk & Mitigation. Avoid vague language."
-)
-
-# Guardrail to ensure advisors provide advice, not only critique
-ADVICE_RULE = (
-    "Advisors must provide actionable advice (specific actions and why), not just critique. "
-    "Include at least one concrete recommended action and an alternative with tradeoffs, when applicable."
-)
-
-# ---- Lightweight rate limiter (in‑memory, per session/user) ----
+# ---- Lightweight rate limiter (in-memory, per session/user) ----
 @st.cache_resource
 def _rate_limit_store() -> Dict[str, deque]:
     return defaultdict(lambda: deque(maxlen=100))
@@ -107,14 +50,6 @@ def _rate_limit_ok(user_id: str, window_s: int = 60, max_calls: int = 3) -> bool
     return True
 
 # Icons and subtitles per category for the hero header
-CATEGORY_EMOJI = {
-    "Medical": "🩺"
-}
-
-CATEGORY_SUBTITLE = {
-    "Medical": "Attending physician leading a multidisciplinary discussion to form a safe, guideline‑aware diagnostic and treatment plan.",
-    }
-
 st.set_page_config(page_title="Medical Advisors", page_icon="🩺", layout="wide")
 st.markdown(
     """
@@ -168,52 +103,43 @@ if "clarifying_answers" not in st.session_state:
 
 col_cfg, col_prev = st.columns([3, 2])
 with col_cfg:
-    # Settings removed from UI; set defaults here
     _default_api_key = ""
     try:
         if "OPENAI_API_KEY" in st.secrets:
             _default_api_key = st.secrets["OPENAI_API_KEY"] or ""
-        # Wire NCBI_API_KEY from secrets into environment for PubMed calls
         if "NCBI_API_KEY" in st.secrets and st.secrets["NCBI_API_KEY"]:
             os.environ["NCBI_API_KEY"] = st.secrets["NCBI_API_KEY"]
     except Exception:
         _default_api_key = ""
-    model = "gpt-5-mini"
-    num_rounds = 2
-    web_search = True
-    cache_outputs = True
-    fast_path = False
+
+    mode_keys = list(RUN_MODES.keys())
+    default_mode_index = 0
+    if DEFAULT_MODE_KEY in RUN_MODES:
+        try:
+            default_mode_index = mode_keys.index(DEFAULT_MODE_KEY)
+        except ValueError:
+            default_mode_index = 0
+    selected_mode_key = st.selectbox(
+        "Run mode",
+        options=mode_keys,
+        index=default_mode_index,
+        format_func=lambda key: RUN_MODES[key].label,
+    )
+    run_mode: RunMode = RUN_MODES[selected_mode_key]
+    st.caption(run_mode.description)
+
+    model = run_mode.model
+    num_rounds = run_mode.num_rounds
+    web_search = run_mode.enable_web_search
+    pubmed_enabled = run_mode.enable_pubmed
+    fast_path = run_mode.fast_path
+    cache_outputs = not fast_path
     user_tag = ""
 
 # Removed Load Previous Session UI per user request
 
 ## (captcha UI moved next to Run button)
 
-# ---- Category-specific agenda placeholders, questions, and rules ----
-CATEGORY_AGENDA_PLACEHOLDER: Dict[str, str] = {
-    "Medical": "e.g., 58-year-old with chest pain and dyspnea; vitals; relevant history/meds/allergies; onset/timeline; key concerns",
-}
-
-CATEGORY_QUESTIONS: Dict[str, list[str]] = {
-    "Medical": [
-        "What are the most likely and must‑not‑miss diagnoses given the presentation?",
-        "What additional history, exam findings, and risk factors are critical to narrow the differential?",
-        "What immediate stabilization steps and precautions are needed, if any?",
-        "What initial labs and imaging are recommended, with rationale?",
-        "What evidence‑based initial management and disposition are appropriate?",
-    ],
-}
-
-CATEGORY_RULES: Dict[str, list[str]] = {
-    "Medical": [
-        "Educational use only; not medical advice. Verify with local guidelines and supervising clinicians.",
-        "Prioritize safety: identify red flags, contraindications, and required monitoring.",
-        "State diagnostic uncertainty and outline alternatives and contingencies.",
-        "Cite guideline‑aligned recommendations when possible; prefer least‑harm options.",
-    ],
-}
-
- 
 
 st.subheader("Case / Problem Description")
 agenda = st.text_area(
@@ -229,7 +155,7 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 @st.cache_data(show_spinner=False, ttl=60 * 60 * 24)
 def generate_clarifying_questions(case_text: str, max_questions: int, model_name: str, category: str) -> List[str]:
-    client = OpenAI()
+    client = get_openai_client()
     system = (
         "You are a domain intake assistant for a multi‑agent advisor. Read the user's case description and draft "
         "concise clarifying questions to remove ambiguity and capture missing critical details for the specified "
@@ -272,7 +198,7 @@ def generate_clarifying_questions(case_text: str, max_questions: int, model_name
 
 # Uncached variant for clarifying questions
 def generate_clarifying_questions_nocache(case_text: str, max_questions: int, model_name: str, category: str) -> List[str]:
-    client = OpenAI()
+    client = get_openai_client()
     system = (
         "You are a domain intake assistant for a multi‑agent advisor. Read the user's case description and draft "
         "concise clarifying questions to remove ambiguity and capture missing critical details for the specified "
@@ -309,169 +235,6 @@ def generate_clarifying_questions_nocache(case_text: str, max_questions: int, mo
             uniq.append(q)
     return uniq[:max_questions]
 
-
-def _chat(model_name: str, system: str, user: str) -> str:
-    client = OpenAI()
-    resp = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-    )
-    return resp.choices[0].message.content if resp.choices else ""
-
-
-def run_fast_completions(
-    agenda: str,
-    contexts: Tuple[str, ...],
-    lead_spec: Dict[str, str],
-    member_specs: Tuple[Dict[str, str], ...],
-    model_name: str,
-    num_rounds: int = 1,
-) -> str:
-    # One parallel round of member advice, then a lead synthesis
-    context_block = "\n\n".join(contexts) if contexts else ""
-
-    def member_prompt(m: Dict[str, str]) -> Tuple[str, str]:
-        system = (
-            f"You are {m['title']}. Expertise: {m['expertise']}. Goal: {m['goal']}. "
-            f"{ADVICE_RULE} {ACTIONABILITY_RULE}"
-        )
-        user = (
-            f"Agenda:\n{agenda}\n\n"
-            + (f"Context:\n{context_block}\n\n" if context_block else "")
-            + "Provide your actionable advice now. Be concise."
-        )
-        return system, user
-
-    # Run members in parallel
-    member_outputs: List[str] = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(member_specs) or 1)) as pool:
-        futures = []
-        for m in member_specs:
-            sys, usr = member_prompt(m)
-            futures.append(pool.submit(_chat, model_name, sys, usr))
-        for fut in futures:
-            try:
-                member_outputs.append(fut.result() or "")
-            except Exception:
-                member_outputs.append("")
-
-    # Lead synthesis
-    lead_system = (
-        f"You are {lead_spec['title']}. Expertise: {lead_spec['expertise']}. Goal: {lead_spec['goal']}. "
-        f"{ACTIONABILITY_RULE}"
-    )
-    members_block = "\n\n".join(
-        f"[member {i+1}]\n{out}" for i, out in enumerate(member_outputs) if out.strip()
-    )
-    lead_user = (
-        f"Agenda:\n{agenda}\n\n"
-        + (f"Context:\n{context_block}\n\n" if context_block else "")
-        + (f"Team member advice:\n{members_block}\n\n" if members_block else "")
-        + "Produce the final consensus in markdown."
-    )
-    summary_md = _chat(model_name, lead_system, lead_user)
-    return summary_md or "(No summary generated)"
-
-def build_web_context(category: str, agenda_text: str) -> str:
-    """Fetch brief web highlights (free DuckDuckGo) for the agenda and category to prime advisors."""
-    if DDGS is None:
-        return ""
-    try:
-        query = f"{category} background for: {agenda_text[:500]}"
-        bullets: List[str] = []
-        with DDGS() as ddgs:  # free, no API key
-            for r in ddgs.text(query, max_results=5):
-                title = r.get("title") or r.get("href") or ""
-                snippet = (r.get("body") or "").strip()[:300]
-                url = r.get("href") or ""
-                bullets.append(f"- {title}: {snippet} ({url})")
-        return ("Web search highlights:\n" + "\n".join(bullets)) if bullets else ""
-    except Exception:
-        return ""
-
-def build_pubmed_context(agenda_text: str, max_results: int = 5) -> tuple[str, str, dict, dict]:
-    """Fetch brief PubMed highlights for the agenda and return (query, markdown, esearch_json, esummary_json).
-
-    Strategy:
-    1) Constrained query (English, last 5y or systematic).
-    2) If empty, relax to title/abstract with English and relevance sort, larger retmax.
-    3) If still empty, append 'clinical guidelines' to bias toward guidance.
-    """
-    try:
-        import os as _os
-        import json as _json
-        from urllib.parse import urlencode, quote_plus as _qp
-        from urllib.request import urlopen as _urlopen
-
-        user_q = (agenda_text or "").strip()
-        if not user_q:
-            return ("", "", {}, {})
-
-        def _esearch(_term: str, _retmax: int) -> dict:
-            params = {
-                "db": "pubmed",
-                "retmode": "json",
-                "retmax": str(_retmax),
-                "term": _term,
-                "sort": "relevance",
-            }
-            _api_key = _os.environ.get("NCBI_API_KEY")
-            if _api_key:
-                params["api_key"] = _api_key
-            _base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
-            _url = f"{_base}/esearch.fcgi?{urlencode(params, quote_via=_qp)}"
-            with _urlopen(_url, timeout=20) as r:
-                return _json.loads(r.read().decode("utf-8"))
-
-        def _esummary(_ids: list[str]) -> dict:
-            esum_params = {
-                "db": "pubmed",
-                "retmode": "json",
-                "id": ",".join(_ids),
-            }
-            _api_key = _os.environ.get("NCBI_API_KEY")
-            if _api_key:
-                esum_params["api_key"] = _api_key
-            _base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
-            _url = f"{_base}/esummary.fcgi?{urlencode(esum_params, quote_via=_qp)}"
-            with _urlopen(_url, timeout=20) as r:
-                return _json.loads(r.read().decode("utf-8"))
-
-        # Pass 1
-        term = f"{user_q} AND (english[la]) AND ((last 5 years[dp]) OR (systematic[sb]))"
-        es = _esearch(term, max_results)
-        idlist = (es.get("esearchresult", {}).get("idlist") or [])[:max_results]
-
-        # Pass 2
-        if not idlist:
-            term = f"({user_q})[tiab] AND english[la]"
-            es = _esearch(term, max_results * 2)
-            idlist = (es.get("esearchresult", {}).get("idlist") or [])[: max_results * 2]
-
-        # Pass 3
-        if not idlist:
-            term = f"({user_q} clinical guidelines)[tiab]"
-            es = _esearch(term, max_results * 2)
-            idlist = (es.get("esearchresult", {}).get("idlist") or [])[: max_results * 2]
-
-        if not idlist:
-            return (term, "", es, {})
-        summary = _esummary(idlist)
-        result = summary.get("result", {})
-        items = []
-        for pmid in idlist:
-            rec = result.get(pmid) or {}
-            title = rec.get("title") or "(no title)"
-            src = rec.get("source") or ""
-            yr = rec.get("pubdate") or rec.get("sortpubdate") or ""
-            items.append(f"- {title} — {src} {yr} (PMID: {pmid})")
-        md = ("PubMed highlights:\n" + "\n".join(items)) if items else ""
-        return (term, md, es, summary)
-    except Exception:
-        return ("", "", {}, {})
 
 # ----- Full meeting caching -----
 def _serialize_agent(agent: Agent) -> Dict[str, str]:
@@ -743,7 +506,6 @@ def _make_next_web_session_name(save_dir: Path) -> str:
 
 
 def _prune_web_sessions(save_dir: Path, max_sessions: int = 5) -> None:
-    from typing import Tuple
     stems = _get_web_session_basenames(save_dir)
     if len(stems) <= max_sessions:
         return
@@ -797,8 +559,11 @@ if run_btn:
             clarifications_text = "\n".join(qa_lines)
         # Optional web search context (DuckDuckGo)
         web_context_text = build_web_context(selected_category, agenda) if web_search else ""
-        # Always fetch PubMed context and log query and raw responses
-        pm_query, pm_md, pm_esearch, pm_esummary = build_pubmed_context(agenda)
+        # Optional PubMed context based on run mode
+        if pubmed_enabled:
+            pm_query, pm_md, pm_esearch, pm_esummary = build_pubmed_context(agenda)
+        else:
+            pm_query, pm_md, pm_esearch, pm_esummary = "", "", {}, {}
         if pm_query:
             with st.expander("PubMed query and highlights", expanded=False):
                 st.code(f"Query: {pm_query}", language="text")
@@ -901,7 +666,7 @@ if run_btn:
                         agenda_rules=agenda_rules,
                         contexts=tuple(x for x in (clarifications_text, web_context_text, pm_md) if x),
                         num_rounds=st.session_state.get("num_rounds_override", None) or int(num_rounds),
-                        pubmed_search=True,
+                        pubmed_search=pubmed_enabled,
                         team_lead_data=_serialize_agent(team_lead),
                         team_members_data=tuple(_serialize_agent(m) for m in team_members),
                         save_name=auto_save_name,
@@ -930,7 +695,7 @@ if run_btn:
                         contexts=tuple(x for x in (clarifications_text, web_context_text, pm_md) if x),
                         num_rounds=st.session_state.get("num_rounds_override", None) or int(num_rounds),
                         temperature=1.0,
-                        pubmed_search=True,
+                        pubmed_search=pubmed_enabled,
                         return_summary=True,
                     )
                 bar.progress(80, text="Summarizing consensus…")

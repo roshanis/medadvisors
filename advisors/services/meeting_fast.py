@@ -1,11 +1,11 @@
 from typing import Dict, List, Tuple
-from openai import OpenAI
 
 from advisors.prompts import ACTIONABILITY_RULE, ADVICE_RULE
+from advisors.services.openai_client import get_openai_client
 
 
 def _chat(model_name: str, system: str, user: str) -> str:
-    client = OpenAI()
+    client = get_openai_client()
     resp = client.chat.completions.create(
         model=model_name,
         messages=[

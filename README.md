@@ -1,85 +1,71 @@
 # Medical Advisors
 
-Medical Advisors is an AI‑assisted, multi‑agent app that coordinates medical specialists to analyze a case and synthesize a clear, actionable consensus plan.
+Medical Advisors is a multi-agent application that stages a clinical case review across specialist roles and returns a concise plan, transcript, and raw artifacts. It is designed for exploratory decision support workflows, not autonomous diagnosis.
 
-## Features
-- Multi‑agent “team meeting” to analyze a case and synthesize a consensus plan
-- Transparent artifacts: full transcript (.md) and raw messages (.json)
-- Streamlit UI for agenda, questions, rules, and team configuration
-- Clarity Assistant: auto‑suggests clarifying questions; your answers guide the agents
-- Optional PubMed search (via the underlying framework)
- - Consensus run typically completes in 2–5 minutes
+## What it does
 
-## Safety & Scope
-- Educational/prototype use only; not medical advice
-- Avoid PHI; comply with institutional policies
-- Human oversight and guideline verification required
+- Runs a structured advisor meeting around a medical case
+- Uses specialist presets such as attending, emergency medicine, internal medicine, radiology, cardiology, insurance, and pharmacy
+- Produces a summary, transcript, and JSON output for later review
+- Supports clarifying questions before the advisor meeting starts
+- Offers fast mode, caching, and optional web search
 
-## Quickstart
-1) Setup
+## Safety and scope
+
+- Prototype and educational use only
+- Not medical advice
+- Do not enter PHI unless you control the environment and policy requirements
+- Human review is required before acting on the output
+
+## Quick start
+
+### Setup
+
 ```bash
-# Install uv (fast Python package manager)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Create and activate venv
 uv venv
 source .venv/bin/activate
-
-# Install deps
 uv pip install -r requirements.txt
 ```
 
-2) API key
-- UI script: create `./.streamlit/secrets.toml`
+### API key
+
+For the UI:
+
 ```toml
+# .streamlit/secrets.toml
 OPENAI_API_KEY = "sk-..."
 ```
-- CLI script: create `.env` (used by `medical_consensus.py`)
+
+For CLI usage:
+
 ```bash
 cp .env.example .env
-# edit .env and set: OPENAI_API_KEY=sk-...
 ```
 
-3) Run UI
+Then add `OPENAI_API_KEY` to `.env`.
+
+### Run
+
 ```bash
 streamlit run app.py
-# open http://localhost:8501
 ```
 
-## Using Medical Advisors
-1) Describe your medical case in “Case Description (Agenda)”
-2) Optionally click “Suggest Questions” and answer clarifiers (Clarity Assistant)
-3) Review the prefilled team (leader + specialists) and edit titles/expertise if desired
-4) Click “Run Advisors” (consensus typically takes 2–5 minutes), then review tabs: Consensus Summary, Transcript, Raw JSON
-5) Saved artifacts: `advisor_meetings/<session>.md` and `<session>.json`
+Open `http://localhost:8501`.
 
-### Default team (editable)
-- Attending Physician (lead)
-- Emergency Medicine
-- Internal Medicine
-- Radiology
-- Cardiology
-- Insurance Expert
-- Clinical Pharmacist
+## Typical workflow
 
-## Configuration Tips
-- Models: Default is `gpt‑5‑mini`. Clarifying questions use your selection. Team meeting uses `GPT‑4.1‑nano` when a `gpt‑5*` model is selected (Assistants requirement).
-- Fast mode: Uses 1 round and smaller specialist models for lower latency/cost.
-- Web search: DuckDuckGo summaries can provide background context; disable for offline runs.
-- Caching: Enable “Cache outputs” to reuse recent results; turn off when iterating prompts.
-- Actionability: Recommendations are short, numbered action plans with owners, deadlines, steps, tools, metrics, risks.
+1. Describe the case.
+2. Answer clarifying questions.
+3. Review or edit the specialist team.
+4. Run the advisor meeting.
+5. Read the summary, transcript, and raw JSON output.
 
-## CLI Example
-```bash
-python medical_consensus.py
-```
-Edit `AGENDA`, `AGENDA_QUESTIONS`, and `AGENDA_RULES` in the script as needed.
+Saved outputs land in `advisor_meetings/`.
 
-## Deploy
-- Local: Streamlit run as above
-- Container: build a minimal Python image and expose port 8501
-- Internal use: protect behind SSO/reverse proxy; store `.env` securely (not in git)
+## Status
+
+Current status: active prototype for multi-agent medical case analysis.
 
 ## License
-- App code: MIT (adjust as needed)
-- Virtual Lab: see license in the upstream repository
+
+MIT for this app code. Any upstream framework keeps its own license.
